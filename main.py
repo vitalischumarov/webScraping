@@ -20,8 +20,8 @@ def extract(url, table_attribs):
     soup = BeautifulSoup(url_data,'html.parser') #Daten in ein sauberes Format umwandeln
     table = soup.find('tbody') #Tabelle auswaehlen
     tr = table.find_all('tr') #alle Zeilen auswaehlen
-    for row in tr:
-        cell = row.find_all('td')
+    for row in tr: #Jede Reihe soll einzelnt ausgewahelt werden
+        cell = row.find_all('td') #Alle Daten in einer Zeile auswaehlen
         if len(cell) != 0:
             dict = {
                 'Name': cell[1].text[1:-2],
@@ -29,16 +29,17 @@ def extract(url, table_attribs):
             }
             temp_df = pd.DataFrame(dict, index=[0])
             df = pd.concat([temp_df,df], ignore_index=True)
-    print(df)
+    #print(df)
     log_progress('Data extraction complete. Initiating Transformation process')
     return df
 
 def transform(df, csv_path):
-    ''' This function accesses the CSV file for exchange rate
-    information, and adds three columns to the data frame, each
-    containing the transformed version of Market Cap column to
-    respective currencies'''
-
+    exchange_data = pd.read_csv(csv_path)
+    for i in range(len(df)):
+        print(i)
+       # df['MC_GBP_Billion'][i - 1] = float(df['MC_USD_Billion'][i - 1]) * exchange_data['Rate'][0]
+       # df['MC_EUR_Billion'][i - 1] = float(df['MC_USD_Billion'][i - 1]) * exchange_data['Rate'][1]
+       # df['MC_INR_Billion'][i - 1] = float(df['MC_USD_Billion'][i - 1]) * exchange_data['Rate'][2]
     log_progress('Data transformation complete. Initiating Loading process')
     return df
 
@@ -64,4 +65,6 @@ def run_query(query_statement, sql_connection):
 functions in the correct order to complete the project. Note that this
 portion is not inside any function.'''
 
-extract(url,table_attribs)
+df_extracted = extract(url,table_attribs)
+df_transformed = transform(df_extracted,'./exchange_rate.csv')
+print(df_transformed)
