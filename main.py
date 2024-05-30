@@ -6,6 +6,8 @@ from datetime import datetime
 
 url = 'https://web.archive.org/web/20230908091635/https://en.wikipedia.org/wiki/List_of_largest_banks'
 table_attribs = ['Name','MC_USD_Billion','MC_GBP_Billion','MC_EUR_Billion','MC_INR_Billion']
+conn = sqlite3.connect('database.sqlite')
+table_name = "data"
 # Code for ETL operations on Country-GDP data
 
 # Importing the required libraries
@@ -36,28 +38,22 @@ def extract(url, table_attribs):
 def transform(df, csv_path):
     exchange_data = pd.read_csv(csv_path)
     for i in range(len(df)):
-        print(i)
-       # df['MC_GBP_Billion'][i - 1] = float(df['MC_USD_Billion'][i - 1]) * exchange_data['Rate'][0]
-       # df['MC_EUR_Billion'][i - 1] = float(df['MC_USD_Billion'][i - 1]) * exchange_data['Rate'][1]
-       # df['MC_INR_Billion'][i - 1] = float(df['MC_USD_Billion'][i - 1]) * exchange_data['Rate'][2]
+        df['MC_EUR_Billion'][i] = round(float(df['MC_USD_Billion'][i]) * float(exchange_data['Rate'][0]),2)
+        df['MC_GBP_Billion'][i] = round(float(df['MC_USD_Billion'][i]) * float(exchange_data['Rate'][1]),2)
+        df['MC_INR_Billion'][i] = round(float(df['MC_USD_Billion'][i]) * float(exchange_data['Rate'][2]),2)
     log_progress('Data transformation complete. Initiating Loading process')
     return df
 
 def load_to_csv(df, output_path):
-    ''' This function saves the final data frame as a CSV file in
-    the provided path. Function returns nothing.'''
-
+    df.to_csv(output_path)
     log_progress('Data saved to CSV file')
 
 def load_to_db(df, sql_connection, table_name):
-    ''' This function saves the final data frame to a database
-    table with the provided name. Function returns nothing.'''
-
+    df.to_sql(table_name, sql_connection, if_exists='replace', index=False)
     log_progress('Data loaded to Database as a table, Executing queries')
 
 def run_query(query_statement, sql_connection):
-    ''' This function runs the query on the database table and
-    prints the output on the terminal. Function returns nothing. '''
+    print(pd.read_sql(query_statement, sql_connection))
 
     log_progress('Process Complete')
 
@@ -67,4 +63,9 @@ portion is not inside any function.'''
 
 df_extracted = extract(url,table_attribs)
 df_transformed = transform(df_extracted,'./exchange_rate.csv')
-print(df_transformed)
+load_to_csv(df_transformed,'./data.csv')
+load_to_db(df_transformed, conn, table_name)
+
+query = 'SELECT AVG(MC_GBP_Billion) FROM data'
+
+run_query(query, conn)
